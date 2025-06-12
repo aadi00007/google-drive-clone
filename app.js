@@ -3,6 +3,7 @@ const app = express();
 const userRouter = require('./routes/user.routes');
 const dotenv = require('dotenv');
 const connectToDB = require('./config/db');
+const cookieParser =  require('cookie-parser');
 
 // Load environment variables first
 dotenv.config();
@@ -30,6 +31,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/user', userRouter);
 
 app.set('view engine', 'ejs');
+app.use(cookieParser())
+
+
+const indexRouter = require('./routes/index.routes')
+app.use('/', indexRouter);
 app.listen(3000, () => {
     console.log('server is running on port 3000');
 });

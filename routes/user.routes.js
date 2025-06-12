@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const userModel = require('../models/user.model');
-const bcrypt = require('bcrypt'); // Added bcrypt import
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+
 
 router.get('/register', (req, res) => {
     res.render('register', {
@@ -115,7 +116,14 @@ router.post(
                 { expiresIn: '1h' }
             );
 
-            res.redirect('/dashboard?token=' + token);
+            // Set the token in a cookie
+            res.cookie('token', token, { 
+                httpOnly: true, 
+                secure: process.env.NODE_ENV === 'production' 
+            });
+
+            // Redirect to dashboard
+            res.redirect('/dashboard');
         } catch (error) {
             console.error('JWT signing error:', error);
             return res.status(500).render('login', {
@@ -126,5 +134,14 @@ router.post(
         }
     }
 );
+
+// Add a basic /dashboard route for testing
+router.get('/dashboard', (req, res) => {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.redirect('/user/login');
+    }
+    res.send(`Welcome to the dashboard! You are logged in.`);
+});
 
 module.exports = router;
