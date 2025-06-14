@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Drive Clone</title>
+  <title>Admin - All Files | Drive Clone</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
   <style>
@@ -16,9 +16,6 @@
       opacity: 1;
       transform: translateY(0);
     }
-    #upload-modal {
-      z-index: 50;
-    }
     #toast-container {
       z-index: 100;
     }
@@ -30,7 +27,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
       <div class="flex items-center space-x-3">
         <i class="ri-drive-line text-3xl text-blue-600 dark:text-blue-400"></i>
-        <h1 class="text-xl font-bold">Drive Clone</h1>
+        <h1 class="text-xl font-bold">Drive Clone - Admin</h1>
       </div>
       <div class="flex items-center space-x-4">
         <button
@@ -39,9 +36,9 @@
         >
           <i id="theme-icon" class="ri-moon-line text-lg"></i>
         </button>
-        <span class="text-sm font-medium">Welcome, <%= user.username %></span>
+        <span class="text-sm font-medium">Welcome, <%= user.username %> (Admin)</span>
         <a
-          href="/user/logout"
+          href="/admin/logout"
           class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
         >
           Logout
@@ -52,22 +49,8 @@
 
   <!-- Main Content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Upload Button -->
-    <div class="mb-8 flex justify-between items-center">
-      <button
-        onclick="openModal()"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none flex items-center space-x-2"
-      >
-        <i class="ri-upload-2-line"></i>
-        <span>Upload File</span>
-      </button>
-      <div class="flex items-center space-x-2">
-        <span class="text-sm text-gray-600 dark:text-gray-400">Total Files: <%= files.length %></span>
-      </div>
-    </div>
-
     <!-- File Grid -->
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Your Files</h2>
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">All Users' Files</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       <% if (files && files.length > 0) { %>
         <% files.forEach(file => { %>
@@ -94,6 +77,9 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Uploaded: <%= new Date(file.uploadedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) %>
             </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Owner: <%= file.userId.username %>
+            </p>
             <!-- Actions -->
             <div class="mt-2 flex space-x-2">
               <a
@@ -106,7 +92,7 @@
               </a>
               <form
                 id="delete-form-<%= file._id %>"
-                action="/user/delete-file/<%= file._id %>?_method=POST"
+                action="/admin/delete-file/<%= file._id %>?_method=POST"
                 method="POST"
                 onsubmit="return confirmDelete(event, '<%= file._id %>')"
               >
@@ -130,48 +116,6 @@
     </div>
   </main>
 
-  <!-- Upload Modal -->
-  <div
-    id="upload-modal"
-    class="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center hidden"
-  >
-    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Upload File</h3>
-        <button
-          onclick="closeModal()"
-          class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
-      <form id="upload-form" action="/user/upload" method="POST" enctype="multipart/form-data">
-        <div class="mb-4">
-          <label class="block text-gray-700 dark:text-gray-300 mb-2" for="file">Choose File</label>
-          <input
-            type="file"
-            id="file"
-            name="file"
-            class="w-full text-gray-900 dark:text-gray-300 bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-2"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none flex items-center justify-center space-x-2"
-        >
-          <span>Upload</span>
-          <svg id="upload-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-        </button>
-      </form>
-    </div>
-  </div>
-
   <!-- Toast Container -->
   <div id="toast-container" class="fixed bottom-4 right-4 space-y-2"></div>
 
@@ -187,15 +131,6 @@
   </div>
 
   <script>
-    function openModal() {
-      document.getElementById('upload-modal').classList.remove('hidden');
-    }
-
-    function closeModal() {
-      document.getElementById('upload-modal').classList.add('hidden');
-      document.getElementById('upload-form').reset();
-    }
-
     function showToast(message, type = 'success') {
       const toast = document.createElement('div');
       toast.className = `toast px-4 py-2 rounded-lg shadow-lg text-white flex items-center space-x-2 ${
@@ -230,35 +165,6 @@
       }
       return false;
     }
-
-    document.getElementById('upload-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      showLoading();
-      document.getElementById('upload-spinner').classList.remove('hidden');
-
-      const formData = new FormData(this);
-      fetch('/user/upload', {
-        method: 'POST',
-        body: formData,
-      })
-        .then(response => {
-          if (!response.ok) throw new Error('Upload failed');
-          return response.text();
-        })
-        .then(() => {
-          closeModal();
-          showToast('File uploaded successfully!', 'success');
-          setTimeout(() => location.reload(), 1000);
-        })
-        .catch(error => {
-          closeModal();
-          showToast(error.message, 'error');
-        })
-        .finally(() => {
-          hideLoading();
-          document.getElementById('upload-spinner').classList.add('hidden');
-        });
-    });
 
     function toggleTheme() {
       document.documentElement.classList.toggle('dark');

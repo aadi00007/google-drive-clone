@@ -8,7 +8,6 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const fs = require('fs').promises;
 
-// Debug: Log the File model to verify it's a Mongoose model
 console.log('File model:', File);
 console.log('File.find is a function:', typeof File.find === 'function');
 
@@ -49,7 +48,10 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-    next();
+    User.findById(decoded.userID).then(user => {
+      if (!user) return res.redirect('/user/login');
+      next();
+    });
   } catch (error) {
     res.clearCookie('token');
     res.redirect('/user/login');
@@ -113,7 +115,7 @@ router.post('/login', async (req, res) => {
 router.get('/home', verifyToken, async (req, res) => {
   try {
     const files = await File.find({ userId: req.user.userID });
-    res.render('home', { user: req.user, files, message: null });
+    res.render('home', { user: req.user, files, message: req.query.message || null });
   } catch (error) {
     console.error('Error in /home route:', error.message);
     res.render('error', { message: `Something went wrong! Details: ${error.message}` });
@@ -124,17 +126,60 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) {
-      return res.status(400).send('No file uploaded');
+      if (req.xhr || req.headers.accept.includes('json')) {
+        return res.status(400).send('No file uploaded');
+      }
+      return res.redirect('/user/home?message=No file uploaded');
     }
 
-    // Check for existing file with the same name and userId
+    const user = await User.findById(req.user.userID);
+    if (!user) {
+      if (file) await fs.unlink(file.path).catch(() => {});
+      throw new Error('User not found');
+    }
+
+    const today = new Date().setHours(0, 0, 0, 0);
+    const lastUploadDate = user.lastUploadDate ? new Date(user.lastUploadDate).setHours(0, 0, 0, 0) : null;
+    if (!lastUploadDate || today > lastUploadDate) {
+      user.dailyUploadCount = 0;
+      user.dailyUploadSize = 0;
+      user.lastUploadDate = new Date();
+    }
+
+    const DAILY_FILE_LIMIT = 5;
+    const DAILY_SIZE_LIMIT = 50 * 1024 * 1024; // 50MB
+    if (user.dailyUploadCount >= DAILY_FILE_LIMIT) {
+      if (file) await fs.unlink(file.path).catch(() => {});
+      throw new Error('Daily upload limit reached (5 files per day)');
+    }
+    if (user.dailyUploadSize + file.size > DAILY_SIZE_LIMIT) {
+      if (file) await fs.unlink(file.path).catch(() => {});
+      throw new Error('Daily upload size limit reached (50MB per day)');
+    }
+
+    const TOTAL_STORAGE_LIMIT = 100 * 1024 * 1024; // 100MB
+    if (user.totalStorageUsed + file.size > TOTAL_STORAGE_LIMIT) {
+      if (file) await fs.unlink(file.path).catch(() => {});
+      throw new Error('Total storage limit reached (100MB per user)');
+    }
+
+    const forbiddenKeywords = ['porn', 'illegal', 'explicit', 'hack', 'virus'];
+    const fileNameLower = file.originalname.toLowerCase();
+    if (forbiddenKeywords.some(keyword => fileNameLower.includes(keyword))) {
+      await fs.unlink(file.path).catch(() => {});
+      throw new Error('File name contains inappropriate content');
+    }
+
     const existingFile = await File.findOne({
       name: file.originalname,
       userId: req.user.userID,
     });
     if (existingFile) {
       await fs.unlink(file.path).catch(() => {});
-      return res.status(400).send('File already exists');
+      if (req.xhr || req.headers.accept.includes('json')) {
+        return res.status(400).send('File already exists');
+      }
+      return res.redirect('/user/home?message=File already exists');
     }
 
     console.log('Attempting to upload file to Cloudinary:', file.path);
@@ -155,14 +200,18 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
     await newFile.save();
     console.log('File metadata saved to MongoDB for user:', req.user.username);
 
+    user.dailyUploadCount += 1;
+    user.dailyUploadSize += file.size;
+    user.totalStorageUsed += file.size;
+    user.lastUploadDate = new Date();
+    await user.save();
+
     await fs.unlink(file.path);
 
-    // For AJAX requests (fetch), return a success response
     if (req.xhr || req.headers.accept.includes('json')) {
       return res.status(200).send('File uploaded successfully!');
     }
 
-    // For regular form submissions, redirect with a message
     res.redirect('/user/home?message=File uploaded successfully!');
   } catch (error) {
     console.error('Upload error:', error);
@@ -186,10 +235,14 @@ router.post('/delete-file/:id', verifyToken, async (req, res) => {
     const fileId = req.params.id;
     const userId = req.user.userID;
 
-    const file = await File.findOne({ _id: fileId, userId });
+    const file = await File.findById(fileId);
     if (!file) {
       console.log('File not found for ID:', fileId);
       return res.redirect('/user/home?message=File not found');
+    }
+
+    if (file.userId.toString() !== userId) {
+      return res.status(403).render('error', { message: 'Access denied: You can only delete your own files' });
     }
 
     console.log('File found:', file.name, 'URL:', file.url);
@@ -203,6 +256,12 @@ router.post('/delete-file/:id', verifyToken, async (req, res) => {
 
     await File.deleteOne({ _id: fileId });
     console.log('File deleted from MongoDB');
+
+    const user = await User.findById(userId);
+    if (user) {
+      user.totalStorageUsed = Math.max(0, user.totalStorageUsed - file.size);
+      await user.save();
+    }
 
     res.redirect('/user/home?message=File deleted successfully!');
   } catch (error) {

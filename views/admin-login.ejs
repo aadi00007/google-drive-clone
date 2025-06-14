@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login | Drive Clone</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet" />
+  <style>
+    .toast {
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #toast-container {
+      z-index: 100;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 w-full max-w-md">
+    <div class="flex items-center justify-center mb-6">
+      <i class="ri-shield-user-line text-3xl text-blue-600 dark:text-blue-400 mr-2"></i>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Login as an Admin</h1>
+    </div>
+    <form id="admin-login-form" action="/admin/login" method="POST">
+      <div class="mb-4">
+        <label for="username" class="block text-gray-700 dark:text-gray-300 mb-2">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <div class="mb-6">
+        <label for="password" class="block text-gray-700 dark:text-gray-300 mb-2">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          required
+        />
+      </div>
+      <button
+        type="submit"
+        class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none flex items-center justify-center space-x-2"
+      >
+        <span>Login</span>
+        <svg id="login-spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="11" cy="11" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 11a8 8 0 018-8V0C5.373 0 0 5.373 0 11h4z"></path>
+        </svg>
+      </button>
+    </form>
+    <div class="mt-4 text-center">
+      <a href="/user/login" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">Back to User Login</a>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div
+    id="loading-overlay"
+    class="hidden fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50"
+  >
+    <svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="11" cy="11" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 11a8 8 0 018-8V0C5.373 0 0 5.373 0 11h4z"></path>
+    </svg>
+  </div>
+
+  <script>
+  // Only show a toast if there's a server-side error message
+  <% if (message) { %>
+    alert('<%= message %>'); // Use a simple alert instead of a toast for debugging
+  <% } %>
+</script>
+</body>
+</html>
