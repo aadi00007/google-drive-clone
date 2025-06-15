@@ -121,19 +121,23 @@ router.get('/home', verifyToken, async (req, res) => {
     res.render('error', { message: `Something went wrong! Details: ${error.message}` });
   }
 });
-
 router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
+    console.log('Received file upload request for user:', req.user.username);
     const file = req.file;
     if (!file) {
+      console.log('No file uploaded');
       if (req.xhr || req.headers.accept.includes('json')) {
         return res.status(400).send('No file uploaded');
       }
       return res.redirect('/user/home?message=No file uploaded');
     }
 
+    console.log('File received:', file.originalname, 'Size:', file.size);
+
     const user = await User.findById(req.user.userID);
     if (!user) {
+      console.log('User not found for ID:', req.user.userID);
       if (file) await fs.unlink(file.path).catch(() => {});
       throw new Error('User not found');
     }
@@ -148,6 +152,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
 
     const DAILY_FILE_LIMIT = 5;
     const DAILY_SIZE_LIMIT = 50 * 1024 * 1024; // 50MB
+    console.log('Checking daily limits - Files:', user.dailyUploadCount, 'Size:', user.dailyUploadSize);
     if (user.dailyUploadCount >= DAILY_FILE_LIMIT) {
       if (file) await fs.unlink(file.path).catch(() => {});
       throw new Error('Daily upload limit reached (5 files per day)');
@@ -158,6 +163,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
     }
 
     const TOTAL_STORAGE_LIMIT = 100 * 1024 * 1024; // 100MB
+    console.log('Checking total storage - Used:', user.totalStorageUsed, 'File size:', file.size);
     if (user.totalStorageUsed + file.size > TOTAL_STORAGE_LIMIT) {
       if (file) await fs.unlink(file.path).catch(() => {});
       throw new Error('Total storage limit reached (100MB per user)');
@@ -214,7 +220,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
 
     res.redirect('/user/home?message=File uploaded successfully!');
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Upload error:', error.message);
     let message = error.message;
     if (error.code === 'LIMIT_FILE_SIZE') {
       message = 'File size exceeds 10MB limit';
