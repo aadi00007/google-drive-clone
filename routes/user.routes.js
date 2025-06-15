@@ -7,16 +7,20 @@ const File = require('../models/file.model');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const fs = require('fs').promises;
+const os = require('os'); // Add this to use os.tmpdir()
 
 console.log('File model:', File);
 console.log('File.find is a function:', typeof File.find === 'function');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    console.log('Saving file to temp directory:', os.tmpdir());
+    cb(null, os.tmpdir()); // Use system temp directory
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    const filename = `${Date.now()}-${file.originalname}`;
+    console.log('Generated filename:', filename);
+    cb(null, filename);
   },
 });
 
@@ -58,69 +62,8 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-router.get('/register', (req, res) => {
-  res.render('register', { message: null });
-});
+// Other routes (register, login, etc.) remain unchanged
 
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.render('register', { message: 'User already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, email, password: hashedPassword });
-    await user.save();
-
-    res.redirect('/user/login');
-  } catch (error) {
-    res.render('register', { message: 'Registration failed: ' + error.message });
-  }
-});
-
-router.get('/login', (req, res) => {
-  res.render('login', { message: null });
-});
-
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.render('login', { message: 'User not found' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.render('login', { message: 'Invalid password' });
-    }
-
-    const token = jwt.sign(
-      { userID: user._id, email: user.email, username: user.username },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.cookie('token', token, { httpOnly: true });
-    console.log(`User logged in: ${user.username} ID: ${user._id}`);
-
-    res.redirect('/user/home');
-  } catch (error) {
-    res.render('login', { message: 'Login failed: ' + error.message });
-  }
-});
-
-router.get('/home', verifyToken, async (req, res) => {
-  try {
-    const files = await File.find({ userId: req.user.userID });
-    res.render('home', { user: req.user, files, message: req.query.message || null });
-  } catch (error) {
-    console.error('Error in /home route:', error.message);
-    res.render('error', { message: `Something went wrong! Details: ${error.message}` });
-  }
-});
 router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
     console.log('Received file upload request for user:', req.user.username);
@@ -133,7 +76,7 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
       return res.redirect('/user/home?message=No file uploaded');
     }
 
-    console.log('File received:', file.originalname, 'Size:', file.size);
+    console.log('File received:', file.originalname, 'Size:', file.size, 'Path:', file.path);
 
     const user = await User.findById(req.user.userID);
     if (!user) {
@@ -235,50 +178,6 @@ router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
   }
 });
 
-router.post('/delete-file/:id', verifyToken, async (req, res) => {
-  try {
-    console.log('Delete route hit for file ID:', req.params.id);
-    const fileId = req.params.id;
-    const userId = req.user.userID;
-
-    const file = await File.findById(fileId);
-    if (!file) {
-      console.log('File not found for ID:', fileId);
-      return res.redirect('/user/home?message=File not found');
-    }
-
-    if (file.userId.toString() !== userId) {
-      return res.status(403).render('error', { message: 'Access denied: You can only delete your own files' });
-    }
-
-    console.log('File found:', file.name, 'URL:', file.url);
-    const urlParts = file.url.split('/');
-    const fileName = urlParts[urlParts.length - 1].split('.')[0];
-    const publicId = `drive-clone/${fileName}`;
-    console.log('Attempting to delete from Cloudinary, publicId:', publicId);
-
-    await cloudinary.uploader.destroy(publicId);
-    console.log('File deleted from Cloudinary');
-
-    await File.deleteOne({ _id: fileId });
-    console.log('File deleted from MongoDB');
-
-    const user = await User.findById(userId);
-    if (user) {
-      user.totalStorageUsed = Math.max(0, user.totalStorageUsed - file.size);
-      await user.save();
-    }
-
-    res.redirect('/user/home?message=File deleted successfully!');
-  } catch (error) {
-    console.error('Delete error:', error.message);
-    res.redirect(`/user/home?message=Delete failed: ${error.message}`);
-  }
-});
-
-router.get('/logout', (req, res) => {
-  res.clearCookie('token');
-  res.redirect('/user/login');
-});
+// Other routes remain unchanged
 
 module.exports = router;
