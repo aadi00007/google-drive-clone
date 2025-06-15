@@ -7,6 +7,7 @@ const File = require('../models/file.model');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const fs = require('fs').promises;
+const os = require('os');
 
 console.log('File model:', File);
 console.log('File.find is a function:', typeof File.find === 'function');
